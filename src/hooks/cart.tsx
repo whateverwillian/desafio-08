@@ -30,23 +30,72 @@ const CartProvider: React.FC = ({ children }) => {
 
   useEffect(() => {
     async function loadProducts(): Promise<void> {
-      // TODO LOAD ITEMS FROM ASYNC STORAGE
+      const data = await AsyncStorage.getItem('@goMarketplace:data');
+
+      if (data) setProducts(JSON.parse(data));
     }
 
     loadProducts();
   }, []);
 
-  const addToCart = useCallback(async product => {
-    // TODO ADD A NEW ITEM TO THE CART
-  }, []);
+  useEffect(() => {
+    async function saveProductsChange(): Promise<void> {
+      await AsyncStorage.setItem(
+        '@goMarketplace:data',
+        JSON.stringify(products),
+      );
+    }
 
-  const increment = useCallback(async id => {
-    // TODO INCREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+    saveProductsChange();
+  }, [products]);
 
-  const decrement = useCallback(async id => {
-    // TODO DECREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+  const increment = useCallback(
+    async id => {
+      const productIdx = products.findIndex(self => self.id === id);
+
+      if (productIdx < 0)
+        throw new Error('You dont added this product to the cart yet');
+
+      const updatedState = [...products];
+      updatedState[productIdx].quantity += 1;
+      setProducts(updatedState);
+    },
+    [products],
+  );
+
+  const decrement = useCallback(
+    async id => {
+      const productIdx = products.findIndex(self => self.id === id);
+
+      if (productIdx < 0)
+        throw new Error('You dont added this product to the cart yet');
+
+      const updatedState = [...products];
+      updatedState[productIdx].quantity -= 1;
+
+      if (updatedState[productIdx].quantity <= 0) {
+        updatedState.splice(productIdx, 1);
+      }
+
+      setProducts(updatedState);
+    },
+    [products],
+  );
+
+  const addToCart = useCallback(
+    async product => {
+      const productIdx = products.findIndex(self => self.id === product.id);
+
+      if (productIdx >= 0) {
+        increment(product.id);
+      } else {
+        const newProduct = { ...product, quantity: 1 };
+
+        setProducts(previous => [...previous, newProduct]);
+      }
+    },
+    [increment, products],
+  );
 
   const value = React.useMemo(
     () => ({ addToCart, increment, decrement, products }),
